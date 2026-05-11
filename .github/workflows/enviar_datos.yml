@@ -1,0 +1,36 @@
+name: Enviar datos simulados a Firebase
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Ejecutar simulador
+        run: python main.py
+
+      - name: Guardar estado actualizado
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add estado.json
+          git commit -m "Actualizar estado del cultivo" || echo "Sin cambios"
+          git push
