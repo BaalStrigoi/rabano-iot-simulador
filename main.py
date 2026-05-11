@@ -5,11 +5,11 @@ import os
 from datetime import datetime
 
 DATABASE_URL = "https://rabano-e4a09-default-rtdb.firebaseio.com"
+API_KEY = os.getenv("FIREBASE_API_KEY")
 
 STATE_FILE = "estado.json"
 
 def cargar_estado():
-
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE, "r") as f:
             return json.load(f)
@@ -22,27 +22,34 @@ def cargar_estado():
     }
 
 def guardar_estado(estado):
-
     with open(STATE_FILE, "w") as f:
-        json.dump(estado, f)
+        json.dump(estado, f, indent=2)
+
+def obtener_token():
+    if not API_KEY:
+        print("No se encontró FIREBASE_API_KEY. Se intentará escribir sin auth.")
+        return None
+
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={API_KEY}"
+    payload = {"returnSecureToken": True}
+
+    r = requests.post(url, json=payload)
+    data = r.json()
+
+    if "idToken" in data:
+        print("Autenticación anónima correcta.")
+        return data["idToken"]
+
+    print("No se pudo autenticar:")
+    print(data)
+    return None
 
 estado = cargar_estado()
-
 estado["contador"] += 1
 
-# =========================
-# TEMPERATURA CUENCA
-# =========================
 temperatura = random.uniform(17.5, 22.0)
-
-# =========================
-# LUMINOSIDAD
-# =========================
 luminosidad = random.uniform(450, 850)
 
-# =========================
-# EVAPORACIÓN REALISTA
-# =========================
 perdida_humedad = random.uniform(0.4, 1.1)
 
 if temperatura > 20:
@@ -50,43 +57,25 @@ if temperatura > 20:
 
 estado["humedad_suelo"] -= perdida_humedad
 
-# =========================
-# RIEGO AUTOMÁTICO
-# =========================
 duracion_bombeo = 0
 agua_aprox_ml = 0
 observaciones = "Condiciones normales"
 
 if estado["humedad_suelo"] < 62:
-
     duracion_bombeo = random.randint(4, 8)
-
     agua_aprox_ml = duracion_bombeo * 16
-
     estado["humedad_suelo"] += random.uniform(10, 16)
-
     observaciones = "Riego automatico activado"
 
 estado["humedad_suelo"] = max(50, min(85, estado["humedad_suelo"]))
 
-# =========================
-# CRECIMIENTO REAL DEL RÁBANO
-# =========================
-
 crecimiento = random.uniform(0.02, 0.08)
-
 estado["altura_cm"] += crecimiento
-
-# altura máxima razonable
 estado["altura_cm"] = min(22.0, estado["altura_cm"])
 
-# hojas crecen lento
 if estado["contador"] % 12 == 0 and estado["numero_hojas"] < 10:
     estado["numero_hojas"] += 1
 
-# =========================
-# FECHA
-# =========================
 fecha_hora = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 datos = {
@@ -101,13 +90,23 @@ datos = {
     "observaciones": observaciones
 }
 
-ruta = f"{DATABASE_URL}/rabano/registros/registro_{estado['contador']}.json"
+token = obtener_token()
+
+ruta = f"{DATABASE_URL}/rabano_datos/registro_{estado['contador']}.json"
+
+if token:
+    ruta += f"?auth={token}"
 
 respuesta = requests.put(ruta, json=datos)
 
 print("================================")
 print("Registro enviado:", estado["contador"])
+print("Ruta: rabano_datos/registro_" + str(estado["contador"]))
 print("HTTP:", respuesta.status_code)
+print("Respuesta Firebase:", respuesta.text)
 print(datos)
 
-guardar_estado(estado)
+if respuesta.status_code == 200:
+    guardar_estado(estado)
+else:
+    print("No se guardó estado porque Firebase rechazó el envío.")
