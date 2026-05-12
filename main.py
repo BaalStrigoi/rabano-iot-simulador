@@ -17,8 +17,8 @@ def cargar_estado():
     return {
         "contador": 0,
         "humedad_suelo": 76.0,
-        "altura_cm": 5.5,
-        "numero_hojas": 5
+        "altura_cm": 3.0,
+        "numero_hojas": 2
     }
 
 def guardar_estado(estado):
@@ -47,9 +47,19 @@ def obtener_token():
 estado = cargar_estado()
 estado["contador"] += 1
 
+# =========================
+# TEMPERATURA CUENCA
+# =========================
 temperatura = random.uniform(17.5, 22.0)
+
+# =========================
+# LUMINOSIDAD
+# =========================
 luminosidad = random.uniform(450, 850)
 
+# =========================
+# EVAPORACIÓN DEL SUELO
+# =========================
 perdida_humedad = random.uniform(0.4, 1.1)
 
 if temperatura > 20:
@@ -57,6 +67,9 @@ if temperatura > 20:
 
 estado["humedad_suelo"] -= perdida_humedad
 
+# =========================
+# RIEGO AUTOMÁTICO
+# =========================
 duracion_bombeo = 0
 agua_aprox_ml = 0
 observaciones = "Condiciones normales"
@@ -69,13 +82,33 @@ if estado["humedad_suelo"] < 62:
 
 estado["humedad_suelo"] = max(50, min(85, estado["humedad_suelo"]))
 
-crecimiento = random.uniform(0.02, 0.08)
+# =========================
+# CRECIMIENTO REALISTA DEL RÁBANO
+# =========================
+# 96 ciclos de 15 minutos equivalen a 1 día.
+# La planta inicia como brote pequeño de 3 cm.
+
+dias_transcurridos = estado["contador"] / 96
+
+if dias_transcurridos < 3:
+    crecimiento = random.uniform(0.005, 0.02)
+elif dias_transcurridos < 7:
+    crecimiento = random.uniform(0.02, 0.05)
+elif dias_transcurridos < 15:
+    crecimiento = random.uniform(0.04, 0.08)
+else:
+    crecimiento = random.uniform(0.01, 0.04)
+
 estado["altura_cm"] += crecimiento
 estado["altura_cm"] = min(22.0, estado["altura_cm"])
 
-if estado["contador"] % 12 == 0 and estado["numero_hojas"] < 10:
+# Las hojas aumentan lentamente, aproximadamente una por día.
+if estado["contador"] % 96 == 0 and estado["numero_hojas"] < 10:
     estado["numero_hojas"] += 1
 
+# =========================
+# FECHA Y DATOS
+# =========================
 fecha_hora = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 datos = {
