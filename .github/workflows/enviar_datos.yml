@@ -2,7 +2,7 @@ name: Enviar datos simulados a Firebase
 
 on:
   schedule:
-    - cron: "7,22,37,52 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
